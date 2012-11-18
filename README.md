@@ -128,11 +128,10 @@ is the "traditional" way to write the last example.
 </head>
 ```
 
-If you are loading any JavaScript files that depend on jQuery (and potentially
-other plugins) but that aren't written as proper jQuery plugins, you may need
-to update the files.
+If you are loading any JavaScript files that depend on jQuery (and other jQuery 
+plugins) but aren't written as jQuery plugins, you may need to modify them.
 
-The problem is that the jRequire function sets the global `jQuery` and `$` 
+The problem is that the `jRequire()` function sets the global `jQuery` and `$` 
 values to the requested jQuery version with the requested plugins installed during
 the duration of time it takes to load all of the requested plugins. `jQuery` 
 and `$` are set back to their previous global values
