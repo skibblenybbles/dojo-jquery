@@ -416,75 +416,164 @@ define(
             ));
         },
         
-        jRequire = function(/*[String version] [Array plugins] [Function callback]*/) {
+        jRequire = function(/*[String version] [ [Array plugins] | [Array callbacks] | [Function callback] ... ] */) {
             // summary:
-            //      Loads jQuery and an array of jQuery plugins and then passes
-            //      the plugin-populated jQuery object to the given callback
+            //      Loads a version of jQuery and then loads or runs each layer
+            //      of jQuery plugins or callbacks in sequence. As each layer
+            //      is loaded or run, the global version of jQuery is set up
+            //      with all previously loaded plugins.
+            //
+            //      The plugins, callbacks and singular callback functions
+            //      (layers) will be loaded or run in sequence as all
+            //      previous dependencies become available.
             //
             // version:
-            //      (String) the jQuery version to load, or the default if 
-            //      unspecified
+            //      (String) the jQuery version to load, or the default if
+            //      unspecified.
             //
             // plugins:
-            //      (Array) an array of plugin URLs, either absolute,
+            //      (Array) an of array of plugin URLs, either absolute,
             //      protocol-relative, root-relative or path-relative.
-            //      Path-relative URLs will use the default setting for pluginPath
-            //      to resolve the full URL.
+            //      Path-relative URLs will use the default settings for
+            //      pluginPath to resolve the full URL.
             //
-            // callback:
-            //      (Function) a function to call back when jQuery and its
-            //      plugins have loaded. It will be passed the jQuery object
+            // callbacks:
+            //      (Array) an array of callback functions to call when
+            //      jQuery and layers of preceeding plugins have loaded.
+            //      Each callback will be passed the populated jQuery object
             //      as its first two parameters. This is a convenience to
             //      allow the callback to receive parameters named
-            //      "$" and "jQuery"
+            //      "$" and "jQuery."
+            //
+            // callback:
+            //      (Function) a singular callback function to run with
+            //      the jQuery context.
             
-            var version =
+            var 
+                // the jQuery version to load
+                version =
                     arguments.length > 0 && typeof arguments[0] === "string"
                     ?
                     arguments[0]
                     :
                     defaults.version,
                 
-                plugins = 
-                    arguments.length > 0 && arguments[0] instanceof Array
-                    ?
-                    arguments[0]
-                    :
-                        arguments.length > 1 && arguments[1] instanceof Array
-                        ?
-                        arguments[1]
-                        :
-                        [],
+                // the plugins to load on this iteration
+                plugins = [],
                 
-                callback =
-                    arguments.length > 0 && typeof arguments[0] === "function"
-                    ?
-                    arguments[0]
-                    :
-                        arguments.length > 1 && typeof arguments[1] === "function"
-                        ?
-                        arguments[1]
-                        :
-                            arguments.length > 2 && typeof arguments[2] === "function"
-                            ?
-                            arguments[2]
-                            :
-                            function() { };
+                // the callbacks to run on this iteration
+                callbacks = [],
+                
+                // the remaining arguments for the next iteration
+                remaining = [];
             
-            // load the plugins and run the callback
+            array.forEach(arguments, function(argument, index) {
+                
+                // decide what to do based on type
+                if (index === 0 && typeof argument === "string") {
+                    
+                    // skip over the jQuery version string
+                    return true;
+                
+                } else if (argument instanceof Array) {
+                    
+                    if (array.every(argument, function(value) {
+                        return typeof value === "string";
+                    })) {
+                        
+                        // have we already encountered plugins or callbacks?
+                        if (plugins.length > 0 || callbacks.length > 0) {
+                            
+                            // track these as remaining arguments
+                            remaining.push(argument);
+                        
+                        } else {
+                            
+                            // resolve all of the plugin names
+                            array.forEach(argument, function(plugin) {
+                                plugins.push(resolvePluginURL(version, plugin));
+                            });
+                        }
+                        
+                    } else if (array.every(argument, function(value) {
+                        return typeof value === "function";
+                    })) {
+                        
+                        // have we already encountered remaining arguments?
+                        if (remaining.length > 0) {
+                            
+                            // track these as remaining arguments
+                            remaining.push(argument);
+                            
+                        } else {
+                            
+                            // track these as callbacks
+                            array.forEach(argument, function(callback) {
+                                callbacks.push(callback);
+                            });
+                        }
+                        
+                    } else {
+                        
+                        throw new Error(
+                            "Error: Invalid argument at index " + index +
+                            ". Expected an Array of plugin URLs or an " +
+                            "Array of callback functions. The Array " +
+                            "contained a mix of value types."
+                        );
+                    }
+                    
+                } else if (typeof argument === "function") {
+                    
+                    // have we already encountered remaining arguments?
+                    if (remaining.length > 0) {
+                        
+                        // track as a remaining argument
+                        remaining.push(argument);
+                        
+                    } else {
+                        
+                        // track as a callback
+                        callbacks.push(argument);
+                    }
+                    
+                } else {
+                    
+                    throw new Error(
+                        "Error: Invalid argument at index " + index + 
+                        ". Expected an Array of plugin URLs, an Array of " +
+                        "callback functions or a single callback function. " +
+                        "Argument was: " + argument
+                    )
+                }
+            });
+            
+            // load the plugins, run the callbacks and recurse
             when(
+                
                 loadPlugins(
                     resolvejQueryURL(version),
-                    array.map(plugins, function(plugin) {
-                        return resolvePluginURL(version, plugin);
-                    })
+                    plugins
                 ),
+                
                 lang.partial(
-                    function(callback, jQuery) {
+                    
+                    function(version, callbacks, remaining, jQuery) {
                         
-                        callback(jQuery, jQuery);
+                        // run the callbacks
+                        array.forEach(callbacks, function(callback) {
+                            
+                            callback(jQuery, jQuery);
+                        });
+                        
+                        // recurse?
+                        if (remaining.length > 0) {
+                            
+                            jRequire.apply(null, [version].concat(remaining));
+                        }
                     },
-                    callback
+                    
+                    version, callbacks, remaining
                 )
             );
         };

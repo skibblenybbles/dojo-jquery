@@ -8,15 +8,12 @@ var
 		"jquery.profile-standalone.js": 1
 	},
 	
-	// regular expression for test modules (here for future-readiness)
+	// regular expression for test modules
 	testRx = /tests\//,
 	
-	// regular expression for built files
-	buildRx = /^jquery\/build\//,
-	
-	// regular expression for excluding dojo in a subdirectory
-	// (included for development convenience, where dojo is in a subdirectory)
-	dojoRx = /^jquery\/dojo\//,
+	// regular expression for ignoring dojo and util
+	// module ids (for author's development setup)
+	ignoreRx = /^jquery\/(dojo|util)\//,
 	
 	// regular expression for JavaScript filenames
 	jsRx = /\.js$/
@@ -28,7 +25,7 @@ var
 	        
 	        ignore: function(filename, mid) {
 	            
-	            return buildRx.test(mid) || dojoRx.test(mid);
+	            return ignoreRx.test(mid);
 	        },
 	        
     		test: function(filename, mid){
