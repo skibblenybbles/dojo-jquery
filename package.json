@@ -1,6 +1,6 @@
 {
     "name": "jquery",
-    "version":"0.9.0",
+    "version":"1.0.0b",
     "description": "Tools for using jQuery in Dojo applications.",
     "dojoBuild": "jquery.profile.js"
 }
